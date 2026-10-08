@@ -20,14 +20,14 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         token = request.headers.get('Authorization')
         if not token:
-            return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+            return jsonify({'success': False, 'message': 'Unauthorized'}), 200
         try:
             token = token.replace('Bearer ', '')
             data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
             if not data.get('is_admin'):
-                return jsonify({'success': False, 'message': 'Forbidden: Admins only'}), 403
+                return jsonify({'success': False, 'message': 'Forbidden: Admins only'}), 200
         except Exception as e:
-            return jsonify({'success': False, 'message': 'Invalid or expired token'}), 401
+            return jsonify({'success': False, 'message': 'Invalid or expired token'}), 200
         return f(*args, **kwargs)
     return decorated_function
 
@@ -54,7 +54,7 @@ def test_database():
         return jsonify({
             "success": False,
             "message": "Server Error: " + str(error), "error": str(error)
-        }), 500
+        }), 200
 
 @app.route("/api/register", methods=["POST"])
 def register():
@@ -72,7 +72,7 @@ def register():
             return jsonify({
                 "success": False,
                 "message": "Name, email and password are required."
-            }), 400
+            }), 200
 
         supabase = get_db()
         
@@ -83,7 +83,7 @@ def register():
             return jsonify({
                 "success": False,
                 "message": "User with this email already exists."
-            }), 409
+            }), 200
 
         hashed_password = generate_password_hash(password)
 
@@ -109,7 +109,7 @@ def register():
             "success": False,
             "message": "Registration failed.",
             "message": "Server Error: " + str(error), "error": str(error)
-        }), 500
+        }), 200
 
 @app.route("/api/login", methods=["POST"])
 def login():
@@ -122,12 +122,12 @@ def login():
         response = execute_with_retry(supabase.table("users").select("*").eq("email", email))
         
         if not response.data or len(response.data) == 0:
-            return jsonify({"success": False, "message": "Invalid email or password."}), 401
+            return jsonify({"success": False, "message": "Invalid email or password."}), 200
             
         user = response.data[0]
         
         if not check_password_hash(user["password"], password):
-            return jsonify({"success": False, "message": "Invalid email or password."}), 401
+            return jsonify({"success": False, "message": "Invalid email or password."}), 200
             
         # Don't send password hash back to frontend
         del user["password"]
@@ -153,7 +153,7 @@ def login():
     except Exception as error:
         import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 500
+        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 200
 
 
 
@@ -198,20 +198,20 @@ def handle_orders():
             order_id = data.get("order_id")
             new_status = data.get("status")
             if not order_id or not new_status:
-                return jsonify({"success": False, "message": "Missing order_id or status."}), 400
+                return jsonify({"success": False, "message": "Missing order_id or status."}), 200
                 
             # If status is anything other than Cancelled, require admin
             if new_status.lower() != "cancelled":
                 token = request.headers.get("Authorization")
                 if not token:
-                    return jsonify({"success": False, "message": "Unauthorized"}), 401
+                    return jsonify({"success": False, "message": "Unauthorized"}), 200
                 try:
                     token = token.replace("Bearer ", "")
                     data_jwt = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
                     if not data_jwt.get("is_admin"):
-                        return jsonify({"success": False, "message": "Forbidden"}), 403
+                        return jsonify({"success": False, "message": "Forbidden"}), 200
                 except:
-                    return jsonify({"success": False, "message": "Invalid token"}), 401
+                    return jsonify({"success": False, "message": "Invalid token"}), 200
             
             response = execute_with_retry(supabase.table("orders").update({"status": new_status}).eq("order_id", order_id))
             
@@ -228,7 +228,7 @@ def handle_orders():
     except Exception as error:
         import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 500
+        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 200
 
 @app.route("/api/profile", methods=["PUT"])
 def update_profile():
@@ -237,7 +237,7 @@ def update_profile():
         email = data.get("email")
         
         if not email:
-            return jsonify({"success": False, "message": "Email is required to update profile."}), 400
+            return jsonify({"success": False, "message": "Email is required to update profile."}), 200
             
         update_data = {
             "name": data.get("name", "").strip(),
@@ -265,7 +265,7 @@ def update_profile():
     except Exception as error:
         import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 500
+        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 200
 
 @app.route("/api/users", methods=["GET"])
 @admin_required
@@ -277,7 +277,7 @@ def get_users():
     except Exception as error:
         import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 500
+        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 200
 
 @app.route("/api/admin/orders", methods=["GET"])
 @admin_required
@@ -299,7 +299,7 @@ def get_all_orders():
     except Exception as error:
         import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 500
+        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 200
 
 @app.route("/api/bouquets", methods=["GET", "POST", "PUT", "DELETE"])
 def handle_bouquets():
@@ -312,14 +312,14 @@ def handle_bouquets():
         # Admin required for POST, PUT, DELETE
         token = request.headers.get("Authorization")
         if not token:
-            return jsonify({"success": False, "message": "Unauthorized"}), 401
+            return jsonify({"success": False, "message": "Unauthorized"}), 200
         try:
             token = token.replace("Bearer ", "")
             data_jwt = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             if not data_jwt.get("is_admin"):
-                return jsonify({"success": False, "message": "Forbidden"}), 403
+                return jsonify({"success": False, "message": "Forbidden"}), 200
         except:
-            return jsonify({"success": False, "message": "Invalid token"}), 401
+            return jsonify({"success": False, "message": "Invalid token"}), 200
 
         if request.method == "POST":
             data = request.get_json()
@@ -328,7 +328,7 @@ def handle_bouquets():
             if bouquet_id:
                 existing = execute_with_retry(supabase.table("bouquets").select("id").eq("id", bouquet_id))
                 if len(existing.data) > 0:
-                    return jsonify({"success": False, "message": f"Bouquet ID '{bouquet_id}' already exists! Please use a unique ID."}), 400
+                    return jsonify({"success": False, "message": f"Bouquet ID '{bouquet_id}' already exists! Please use a unique ID."}), 200
             
             response = execute_with_retry(supabase.table("bouquets").insert(data))
             return jsonify({"success": True, "message": "Bouquet added!"}), 201
@@ -347,7 +347,7 @@ def handle_bouquets():
     except Exception as error:
         import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 500
+        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 200
 
 import time
 
@@ -368,11 +368,11 @@ import uuid
 def upload_file():
     try:
         if 'file' not in request.files:
-            return jsonify({"success": False, "message": "No file uploaded"}), 400
+            return jsonify({"success": False, "message": "No file uploaded"}), 200
             
         file = request.files['file']
         if file.filename == '':
-            return jsonify({"success": False, "message": "No selected file"}), 400
+            return jsonify({"success": False, "message": "No selected file"}), 200
             
         file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
         file_name = f"{uuid.uuid4()}.{file_ext}"
@@ -486,7 +486,7 @@ def ai_picks():
     except Exception as error:
         import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 500
+        return jsonify({"success": False, "message": "Server Error: " + str(error), "error": str(error), "traceback": traceback.format_exc()}), 200
 
 if __name__ == "__main__":
      app.run(debug=False, port=5000, use_reloader=False)
